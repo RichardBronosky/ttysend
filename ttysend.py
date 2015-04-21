@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from __future__ import print_function
 import sys
 import os
@@ -14,6 +15,13 @@ class RootRequired(Exception):
 
 
 def send(data, tty):
+    if len(data):
+        # Handle trailing newline
+        if data[-1][-1] != '\n':
+            data += '\n'
+        send_raw(data, tty)
+
+def send_raw(data, tty):
     """Send each char of data to tty."""
     if(os.getuid() != 0):
         raise RootRequired('Only root can send input to other TTYs.')
@@ -26,7 +34,7 @@ if __name__ == '__main__':
                         help='display a square of a given number')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-n', action='store_true',
-                       help='Do not print the trailing newline character.')
+                       help='Do not force a trailing newline character.')
     group.add_argument('--stdin', action='store_true',
                        help='Read input from stdin.')
     args, data = parser.parse_known_args()
@@ -39,10 +47,9 @@ if __name__ == '__main__':
 
     # Send data
     try:
-        send(data, args.tty)
+        if args.n:
+            send_raw(data, args.tty)
+        else:
+            send(data, args.tty)
     except RootRequired, e:
         sys.exit(print('ERROR:', e, file=sys.stderr))
-
-    # Handle trailing newline
-    if data[-1][-1] != '\n' and not args.n:
-        send('\n', args.tty)
